@@ -287,7 +287,7 @@ class GameService {
     for (const [id, snake] of gameState.players) {
       players[id] = {
         id: snake.id,
-        positions: snake.positions.map(pos => ({ x: pos.x, y: pos.y })), // 깊은 복사
+        positions: JSON.parse(JSON.stringify(snake.positions)), // JSON 직렬화로 확실하게 배열 보장
         direction: snake.direction,
         speed: snake.speed,
         color: snake.color,
@@ -296,22 +296,17 @@ class GameService {
     
     const foods: any = {};
     for (const [id, food] of gameState.foods) {
-      foods[id] = {
-        id: food.id,
-        position: { x: food.position.x, y: food.position.y },
-        type: food.type,
-        value: food.value,
-      };
+      foods[id] = JSON.parse(JSON.stringify(food)); // 전체 객체 직렬화
     }
     
-    return {
+    return JSON.parse(JSON.stringify({
       players,
       foods,
       scores: Object.fromEntries(gameState.scores),
       gameTime: gameState.gameTime,
       isGameOver: gameState.isGameOver,
       winner: gameState.winner,
-    };
+    }));
   }
 }
 

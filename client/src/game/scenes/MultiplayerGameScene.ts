@@ -96,15 +96,23 @@ export default class MultiplayerGameScene extends Phaser.Scene {
     
     // 새로운 뱀 추가 또는 업데이트
     for (const [playerId, snakeData] of Object.entries(gameState.players)) {
+      // positions를 배열로 변환
+      const processedSnakeData = {
+        ...snakeData,
+        positions: Array.isArray(snakeData.positions) 
+          ? snakeData.positions 
+          : Object.values(snakeData.positions || {})
+      } as SnakeType;
+      
       let snake = this.snakes.get(playerId);
       
       if (!snake) {
         // 새로운 뱀 생성
-        snake = new Snake(this, snakeData as SnakeType, playerId === this.localPlayerId);
+        snake = new Snake(this, processedSnakeData, playerId === this.localPlayerId);
         this.snakes.set(playerId, snake);
       } else {
         // 기존 뱀 업데이트
-        snake.updateFromServer(snakeData as SnakeType);
+        snake.updateFromServer(processedSnakeData);
       }
     }
     
