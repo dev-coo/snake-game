@@ -16,5 +16,13 @@
   "exclude": ["node_modules", "dist"],
   "references": [
     { "path": "../shared" }
-  ]
+  ],
+  "ts-node": {
+    "esm": false,
+    "transpileOnly": true,
+    "files": true,
+    "compilerOptions": {
+      "module": "commonjs"
+    }
+  }
 }
