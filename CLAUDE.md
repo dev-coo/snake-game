@@ -123,3 +123,9 @@ npm run build           # 프로덕션 빌드
 - 맵 크기: 40x40 격자
 - 캔버스 크기: 600x600px
 - 시간 제한: 클래식 3분, 배틀 5분
+
+## 주의사항
+- **서버는 CommonJS 모듈 시스템 사용**: require/module.exports 사용
+- **shared 패키지도 CommonJS로 빌드**: ESM 사용 시 서버에서 ERR_REQUIRE_ESM 오류 발생
+- shared/tsconfig.json에 `"module": "commonjs"` 설정 필요
+- shared/package.json에 `"type": "module"` 제거 필요
