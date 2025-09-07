@@ -83,7 +83,7 @@ export default class GameScene extends Phaser.Scene {
     const initialSnake: SnakeType = {
       id: 'player-1',
       positions: this.generateInitialPositions(
-        Math.floor(GAME_CONFIG.GRID_SIZE.WIDTH / 4),
+        Math.floor(GAME_CONFIG.GRID_SIZE.WIDTH / 3),
         Math.floor(GAME_CONFIG.GRID_SIZE.HEIGHT / 2)
       ),
       direction: 'right',
@@ -210,10 +210,16 @@ export default class GameScene extends Phaser.Scene {
 
     // 엔티티 업데이트
     if (this.localSnake) {
+      // 이동 전 현재 위치 저장
+      const prevHead = this.localSnake.getHead();
+      
       this.localSnake.update(delta);
       
-      // 충돌 검사
-      this.checkCollisions();
+      // 위치가 변경되었을 때만 충돌 검사
+      const currentHead = this.localSnake.getHead();
+      if (prevHead.x !== currentHead.x || prevHead.y !== currentHead.y) {
+        this.checkCollisions();
+      }
     }
 
     // 먹이 애니메이션 업데이트
@@ -312,12 +318,8 @@ export default class GameScene extends Phaser.Scene {
     // 게임 스토어 업데이트
     const store = useGameStore.getState();
     store.setGameStatus('finished');
-
-    // 잠시 후 메뉴로 이동
-    this.time.delayedCall(2000, () => {
-      this.scene.restart();
-      store.resetGame();
-    });
+    
+    // 자동 이동 제거 - 사용자가 직접 선택하도록 함
   }
 
   /**

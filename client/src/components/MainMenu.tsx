@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
 
 /**
@@ -9,12 +9,23 @@ export default function MainMenu() {
   const [playerName, setPlayerName] = useState('');
   const { setGameStatus, setGameMode, setPlayerName: setStorePlayerName } = useGameStore();
 
+  // 컴포넌트 마운트 시 저장된 이름 불러오기
+  useEffect(() => {
+    const savedName = localStorage.getItem('playerName');
+    if (savedName) {
+      setPlayerName(savedName);
+      setStorePlayerName(savedName);
+    }
+  }, [setStorePlayerName]);
+
   const handleSinglePlayer = () => {
     if (!playerName.trim()) {
       alert('플레이어 이름을 입력해주세요!');
       return;
     }
 
+    // 이름을 localStorage에 저장
+    localStorage.setItem('playerName', playerName);
     setStorePlayerName(playerName);
     setGameMode('classic');
     setGameStatus('playing');
@@ -26,6 +37,8 @@ export default function MainMenu() {
       return;
     }
 
+    // 이름을 localStorage에 저장
+    localStorage.setItem('playerName', playerName);
     setStorePlayerName(playerName);
     setGameMode('battle');
     // TODO: 멀티플레이어 구현 시 로비로 이동

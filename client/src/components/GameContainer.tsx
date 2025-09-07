@@ -76,11 +76,11 @@ export default function GameContainer() {
             id="game-container"
             className="rounded-lg overflow-hidden shadow-2xl"
           />
-          
-          {/* 게임 UI 오버레이 */}
-          {gameStatus === 'playing' && <GameUI />}
         </div>
       </div>
+      
+      {/* 게임 UI 오버레이 - 게임 캔버스 밖에 위치 */}
+      {gameStatus === 'playing' && <GameUI />}
 
       {/* 게임 오버 모달 */}
       {gameStatus === 'finished' && (

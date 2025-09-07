@@ -34,8 +34,8 @@ export default function GameUI() {
   const timeRemaining = Math.max(0, timeLimit - timeElapsed);
 
   return (
-    <div className="absolute top-0 left-0 right-0 p-4 pointer-events-none">
-      <div className="flex justify-between items-start gap-4">
+    <div className="fixed top-20 left-0 right-0 p-4 pointer-events-none z-10">
+      <div className="max-w-7xl mx-auto flex justify-between items-start gap-4">
         {/* 왼쪽: 플레이어 정보 */}
         <div className="bg-gray-900/80 backdrop-blur-sm rounded-lg p-3 min-w-[150px]">
           <div className="text-xs text-gray-400 mb-1">플레이어</div>
