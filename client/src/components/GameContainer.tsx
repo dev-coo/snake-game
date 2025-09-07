@@ -69,12 +69,16 @@ export default function GameContainer() {
 
       {/* 게임 영역 */}
       <div className="flex-1 flex items-center justify-center p-4">
-        <div className="relative">
+        <div className="relative inline-block">
           {/* Phaser 게임 캔버스 */}
           <div 
             ref={gameContainerRef}
             id="game-container"
             className="rounded-lg overflow-hidden shadow-2xl"
+            style={{
+              width: '600px',
+              height: '600px',
+            }}
           />
         </div>
       </div>

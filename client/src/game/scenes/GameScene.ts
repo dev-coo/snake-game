@@ -19,6 +19,8 @@ export default class GameScene extends Phaser.Scene {
   private gameStarted: boolean = false;
   private gameTimer: Phaser.Time.TimerEvent | null = null;
   private timeElapsed: number = 0;
+  private directionChangeProcessed: boolean = true;
+  private nextDirection: Direction | null = null;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -219,6 +221,15 @@ export default class GameScene extends Phaser.Scene {
       const currentHead = this.localSnake.getHead();
       if (prevHead.x !== currentHead.x || prevHead.y !== currentHead.y) {
         this.checkCollisions();
+        this.directionChangeProcessed = true; // 이동 후 다음 방향 변경 허용
+        
+        // 대기 중인 방향이 있으면 적용
+        if (this.nextDirection) {
+          this.localSnake.changeDirection(this.nextDirection);
+          this.lastDirection = this.nextDirection;
+          this.nextDirection = null;
+          this.directionChangeProcessed = false;
+        }
       }
     }
 
@@ -248,8 +259,15 @@ export default class GameScene extends Phaser.Scene {
     }
 
     if (newDirection && newDirection !== this.lastDirection) {
-      this.localSnake.changeDirection(newDirection);
-      this.lastDirection = newDirection;
+      // 방향 변경이 처리되었으면 즉시 적용
+      if (this.directionChangeProcessed) {
+        this.localSnake.changeDirection(newDirection);
+        this.lastDirection = newDirection;
+        this.directionChangeProcessed = false;
+      } else {
+        // 처리되지 않았으면 다음 이동 시 적용하도록 저장
+        this.nextDirection = newDirection;
+      }
     }
   }
 
@@ -261,15 +279,16 @@ export default class GameScene extends Phaser.Scene {
 
     const head = this.localSnake.getHead();
 
+    // 충돌 순서 중요: 벽 -> 자기 자신 순으로 체크
     // 벽 충돌
     if (this.localSnake.checkWallCollision()) {
-      this.gameOver('벽에 충돌했습니다!');
+      this.gameOver('벽');
       return;
     }
 
     // 자기 자신과 충돌
     if (this.localSnake.checkSelfCollision()) {
-      this.gameOver('자신의 몸에 충돌했습니다!');
+      this.gameOver('자신의 몸');
       return;
     }
 
@@ -313,10 +332,11 @@ export default class GameScene extends Phaser.Scene {
     }
 
     // 게임 오버 처리
-    console.log(`게임 오버: ${reason}`);
+    console.log(`게임 오버: ${reason}에 충돌`);
     
     // 게임 스토어 업데이트
     const store = useGameStore.getState();
+    store.setGameOverReason(reason);
     store.setGameStatus('finished');
     
     // 자동 이동 제거 - 사용자가 직접 선택하도록 함

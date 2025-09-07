@@ -10,7 +10,7 @@ interface GameOverModalProps {
  * 게임 종료 시 결과를 표시하고 다음 행동 선택
  */
 export default function GameOverModal({ onRestart, onBackToMenu }: GameOverModalProps) {
-  const { playerName, gameMode } = useGameStore();
+  const { playerName, gameMode, gameOverReason } = useGameStore();
   
   // TODO: 실제 게임 결과 데이터 연동
   const gameResult = {
@@ -18,7 +18,6 @@ export default function GameOverModal({ onRestart, onBackToMenu }: GameOverModal
     timeElapsed: 0,
     foodEaten: 0,
     maxLength: 3,
-    reason: '벽에 충돌',
   };
 
   return (
@@ -29,7 +28,7 @@ export default function GameOverModal({ onRestart, onBackToMenu }: GameOverModal
           Game Over
         </h2>
         <p className="text-center text-gray-400 mb-6">
-          {gameResult.reason}했습니다
+          {gameOverReason || '알 수 없는 이유'}에 충돌했습니다
         </p>
 
         {/* 결과 정보 */}
