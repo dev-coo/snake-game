@@ -93,6 +93,18 @@ class NetworkService {
     this.socket.emit('leave-room', { roomId });
   }
   
+  requestRematch(roomId: string): void {
+    if (!this.socket) return;
+    
+    this.socket.emit('rematch-request', { roomId });
+  }
+  
+  cancelRematch(roomId: string): void {
+    if (!this.socket) return;
+    
+    this.socket.emit('rematch-cancel', { roomId });
+  }
+  
   onRoomUpdate(callback: (data: any) => void): void {
     this.roomUpdateCallback = callback;
   }

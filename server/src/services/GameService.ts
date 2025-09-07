@@ -283,8 +283,19 @@ class GameService {
   
   // Socket.io 전송을 위해 Map을 일반 객체로 변환
   serializeGameState(gameState: GameState): any {
+    const players: any = {};
+    for (const [id, snake] of gameState.players) {
+      players[id] = {
+        id: snake.id,
+        positions: [...snake.positions], // 배열 복사
+        direction: snake.direction,
+        speed: snake.speed,
+        color: snake.color,
+      };
+    }
+    
     return {
-      players: Object.fromEntries(gameState.players),
+      players,
       foods: Object.fromEntries(gameState.foods),
       scores: Object.fromEntries(gameState.scores),
       gameTime: gameState.gameTime,

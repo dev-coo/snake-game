@@ -120,6 +120,41 @@ class SocketController {
         this.gameService.updateDirection(data.roomId, socket.id, data.direction);
       });
       
+      // 재경기 요청
+      socket.on('rematch-request', (data: { roomId: string }) => {
+        const room = this.roomService.getRoom(data.roomId);
+        if (!room) return;
+        
+        // 재경기 요청 상태 저장
+        if (!room.rematchRequests) {
+          room.rematchRequests = new Set();
+        }
+        room.rematchRequests.add(socket.id);
+        
+        // 상대방에게 재경기 요청 알림
+        socket.broadcast.to(data.roomId).emit('rematch-requested', {
+          playerId: socket.id,
+          playerName: room.players.get(socket.id)?.name,
+        });
+        
+        // 모두 재경기를 원하면 게임 재시작
+        if (room.rematchRequests.size === room.players.size) {
+          this.resetAndStartGame(data.roomId);
+        }
+      });
+      
+      // 재경기 취소
+      socket.on('rematch-cancel', (data: { roomId: string }) => {
+        const room = this.roomService.getRoom(data.roomId);
+        if (room?.rematchRequests) {
+          room.rematchRequests.delete(socket.id);
+          
+          socket.broadcast.to(data.roomId).emit('rematch-cancelled', {
+            playerId: socket.id,
+          });
+        }
+      });
+      
       // 연결 해제
       socket.on('disconnect', () => {
         // 플레이어가 속한 모든 방에서 제거
@@ -184,12 +219,29 @@ class SocketController {
           scores: Object.fromEntries(state.scores),
         });
         
-        // 게임 정리
-        setTimeout(() => {
-          this.gameService.stopGame(roomId);
-        }, 5000);
+        // 게임 정리는 하지 않음 (재경기를 위해)
       }
     });
+  }
+  
+  private resetAndStartGame(roomId: string): void {
+    const room = this.roomService.getRoom(roomId);
+    if (!room) return;
+    
+    // 재경기 요청 초기화
+    room.rematchRequests = new Set();
+    room.status = 'playing';
+    
+    // 이전 게임 정리
+    this.gameService.stopGame(roomId);
+    
+    // 새 게임 시작
+    this.io.to(roomId).emit('rematch-starting');
+    
+    // 잠시 후 게임 시작 (클라이언트 준비 시간)
+    setTimeout(() => {
+      this.startGame(roomId);
+    }, 1000);
   }
 }
 

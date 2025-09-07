@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
+import NetworkService from '@/services/NetworkService';
 
 interface GameOverModalProps {
   onRestart: () => void;
@@ -10,7 +12,62 @@ interface GameOverModalProps {
  * 게임 종료 시 결과를 표시하고 다음 행동 선택
  */
 export default function GameOverModal({ onRestart, onBackToMenu }: GameOverModalProps) {
-  const { playerName, gameMode, gameOverReason } = useGameStore();
+  const { playerName, gameMode, gameOverReason, roomId } = useGameStore();
+  const [isWaitingForRematch, setIsWaitingForRematch] = useState(false);
+  const [rematchRequested, setRematchRequested] = useState(false);
+  const [opponentWantsRematch, setOpponentWantsRematch] = useState(false);
+  
+  const isMultiplayer = roomId !== null;
+  const networkService = NetworkService.getInstance();
+  
+  useEffect(() => {
+    if (!isMultiplayer) return;
+    
+    const socket = (networkService as any).socket;
+    if (!socket) return;
+    
+    // 재경기 요청 받음
+    const handleRematchRequested = (data: any) => {
+      setOpponentWantsRematch(true);
+    };
+    
+    // 재경기 취소됨
+    const handleRematchCancelled = (data: any) => {
+      setOpponentWantsRematch(false);
+    };
+    
+    // 재경기 시작
+    const handleRematchStarting = () => {
+      // 게임 씬으로 돌아가기
+      const store = useGameStore.getState();
+      store.setGameStatus('playing');
+      store.setGameOverReason(null);
+    };
+    
+    socket.on('rematch-requested', handleRematchRequested);
+    socket.on('rematch-cancelled', handleRematchCancelled);
+    socket.on('rematch-starting', handleRematchStarting);
+    
+    return () => {
+      socket.off('rematch-requested', handleRematchRequested);
+      socket.off('rematch-cancelled', handleRematchCancelled);
+      socket.off('rematch-starting', handleRematchStarting);
+    };
+  }, [isMultiplayer]);
+  
+  const handleRematch = () => {
+    if (!roomId) return;
+    
+    if (rematchRequested) {
+      // 취소
+      networkService.cancelRematch(roomId);
+      setRematchRequested(false);
+    } else {
+      // 요청
+      networkService.requestRematch(roomId);
+      setRematchRequested(true);
+    }
+  };
   
   // TODO: 실제 게임 결과 데이터 연동
   const gameResult = {
@@ -58,13 +115,42 @@ export default function GameOverModal({ onRestart, onBackToMenu }: GameOverModal
 
         {/* 액션 버튼 */}
         <div className="space-y-3">
-          <button
-            onClick={onRestart}
-            className="w-full btn-primary py-3 text-lg flex items-center justify-center gap-2"
-          >
-            <span>🔄</span>
-            <span>다시 시작</span>
-          </button>
+          {isMultiplayer ? (
+            <>
+              <button
+                onClick={handleRematch}
+                className={`w-full py-3 text-lg flex items-center justify-center gap-2 rounded-lg transition-colors ${
+                  rematchRequested 
+                    ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                    : 'btn-primary'
+                }`}
+              >
+                <span>🔄</span>
+                <span>{rematchRequested ? '재경기 요청 취소' : '재경기 요청'}</span>
+              </button>
+              
+              {(rematchRequested || opponentWantsRematch) && (
+                <div className="text-center text-sm">
+                  {rematchRequested && opponentWantsRematch ? (
+                    <span className="text-green-400">잠시 후 재경기가 시작됩니다!</span>
+                  ) : rematchRequested ? (
+                    <span className="text-yellow-400">상대방의 응답을 기다리는 중...</span>
+                  ) : (
+                    <span className="text-yellow-400">상대방이 재경기를 원합니다!</span>
+                  )}
+                </div>
+              )}
+            </>
+          ) : (
+            <button
+              onClick={onRestart}
+              className="w-full btn-primary py-3 text-lg flex items-center justify-center gap-2"
+            >
+              <span>🔄</span>
+              <span>다시 시작</span>
+            </button>
+          )}
+          
           <button
             onClick={onBackToMenu}
             className="w-full bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg transition-colors"

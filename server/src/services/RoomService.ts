@@ -16,6 +16,7 @@ interface Room {
   status: 'waiting' | 'playing' | 'finished';
   createdAt: Date;
   gameStartedAt?: Date;
+  rematchRequests?: Set<string>;
 }
 
 class RoomService {
