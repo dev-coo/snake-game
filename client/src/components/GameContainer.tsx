@@ -23,6 +23,8 @@ export default function GameContainer() {
       };
       
       gameRef.current = new Phaser.Game(config);
+      // 전역에서 접근 가능하도록 저장
+      (window as any).phaserGame = gameRef.current;
     }
 
     // 클린업

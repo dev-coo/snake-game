@@ -85,17 +85,57 @@ export default class MultiplayerGameScene extends Phaser.Scene {
     socket.on('game-over', (data: any) => {
       console.log('Game over:', data);
       const store = useGameStore.getState();
-      store.setGameOverReason(data.winner === this.localPlayerId ? '승리!' : '패배');
+      
+      // 사망 원인 설정
+      let gameOverReason = '';
+      if (data.isWinner) {
+        gameOverReason = '승리!';
+      } else {
+        switch (data.deathCause) {
+          case 'wall':
+            gameOverReason = '벽';
+          break;
+          case 'self':
+            gameOverReason = '자기 몸';
+          break;
+          case 'opponent':
+            gameOverReason = '상대방';
+          break;
+          default:
+            gameOverReason = '알 수 없는 이유';
+        }
+      }
+      
+      store.setGameOverReason(gameOverReason);
       store.setGameStatus('finished');
+      
+      // 추가 게임 정보 저장
+      (store as any).setGameResult({
+        isWinner: data.isWinner,
+        scores: data.scores,
+        winnerName: data.winnerName,
+      });
+      
+      // 씬 정지 (GameOverModal이 표시되도록)
+      this.scene.pause();
     });
   }
 
   private updateGameState(gameState: any): void {
+    console.log('=== updateGameState called ===');
+    console.log('gameState:', gameState);
+    console.log('gameState.players:', gameState.players);
+    
     // 뱀 업데이트
     const playerIds = new Set(Object.keys(gameState.players));
     
     // 새로운 뱀 추가 또는 업데이트
     for (const [playerId, snakeData] of Object.entries(gameState.players)) {
+      console.log(`Processing player ${playerId}:`, snakeData);
+      console.log('snakeData type:', typeof snakeData);
+      console.log('snakeData.positions:', snakeData.positions);
+      console.log('Is positions array?', Array.isArray(snakeData.positions));
+      
       // positions를 배열로 변환
       const processedSnakeData = {
         ...snakeData,
@@ -104,14 +144,18 @@ export default class MultiplayerGameScene extends Phaser.Scene {
           : Object.values(snakeData.positions || {})
       } as SnakeType;
       
+      console.log('processedSnakeData:', processedSnakeData);
+      
       let snake = this.snakes.get(playerId);
       
       if (!snake) {
         // 새로운 뱀 생성
+        console.log('Creating new snake with data:', processedSnakeData);
         snake = new Snake(this, processedSnakeData, playerId === this.localPlayerId);
         this.snakes.set(playerId, snake);
       } else {
         // 기존 뱀 업데이트
+        console.log('Updating existing snake with data:', processedSnakeData);
         snake.updateFromServer(processedSnakeData);
       }
     }

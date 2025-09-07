@@ -186,14 +186,14 @@ class GameService {
     // 벽 충돌 검사
     if (head.x < 0 || head.x >= GAME_CONFIG.GRID_SIZE.WIDTH ||
         head.y < 0 || head.y >= GAME_CONFIG.GRID_SIZE.HEIGHT) {
-      this.handlePlayerDeath(playerId, gameState);
+      this.handlePlayerDeath(playerId, gameState, 'wall');
       return;
     }
     
     // 자기 자신 충돌 검사
     for (let i = 1; i < snake.positions.length; i++) {
       if (head.x === snake.positions[i].x && head.y === snake.positions[i].y) {
-        this.handlePlayerDeath(playerId, gameState);
+        this.handlePlayerDeath(playerId, gameState, 'self');
         return;
       }
     }
@@ -204,7 +204,7 @@ class GameService {
       
       for (const segment of otherSnake.positions) {
         if (head.x === segment.x && head.y === segment.y) {
-          this.handlePlayerDeath(playerId, gameState);
+          this.handlePlayerDeath(playerId, gameState, 'opponent');
           return;
         }
       }
@@ -241,13 +241,23 @@ class GameService {
     }
   }
   
-  private handlePlayerDeath(playerId: string, gameState: GameState): void {
+  private handlePlayerDeath(playerId: string, gameState: GameState, deathCause: 'wall' | 'self' | 'opponent'): void {
+    const player = gameState.players.get(playerId);
+    if (player) {
+      // 사망 원인 저장
+      (player as any).deathCause = deathCause;
+    }
+    
     gameState.players.delete(playerId);
     
     // 남은 플레이어가 1명이면 게임 종료
     if (gameState.players.size === 1) {
       gameState.isGameOver = true;
       gameState.winner = gameState.players.keys().next().value;
+      (gameState as any).loserInfo = {
+        playerId,
+        deathCause
+      };
     }
   }
   

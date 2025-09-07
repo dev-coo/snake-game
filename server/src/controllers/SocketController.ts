@@ -212,12 +212,23 @@ class SocketController {
       if (state.isGameOver) {
         room.status = 'finished';
         const winner = state.winner ? room.players.get(state.winner)?.name : '무승부';
+        const loserInfo = (state as any).loserInfo;
         
-        this.io.to(roomId).emit('game-over', {
-          winner: state.winner,
-          winnerName: winner,
-          scores: Object.fromEntries(state.scores),
-        });
+        // 각 플레이어에게 개인화된 게임 오버 정보 전송
+        for (const [playerId, player] of room.players) {
+          const isWinner = playerId === state.winner;
+          const socket = player.socket;
+          
+          if (socket) {
+            socket.emit('game-over', {
+              winner: state.winner,
+              winnerName: winner,
+              scores: Object.fromEntries(state.scores),
+              isWinner,
+              deathCause: !isWinner && loserInfo ? loserInfo.deathCause : null,
+            });
+          }
+        }
         
         // 게임 정리는 하지 않음 (재경기를 위해)
       }

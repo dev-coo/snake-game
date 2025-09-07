@@ -19,6 +19,7 @@ function App() {
         return <WaitingRoom onLeave={resetGame} />;
       
       case 'playing':
+      case 'finished':
         return <GameContainer />;
       
       default:

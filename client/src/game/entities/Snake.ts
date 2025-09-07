@@ -41,6 +41,9 @@ export default class Snake {
    * 서버로부터 받은 데이터로 뱀 상태 업데이트
    */
   updateFromServer(snakeData: SnakeType): void {
+    console.log('Snake.updateFromServer called with:', snakeData);
+    console.log('positions type:', typeof snakeData.positions);
+    console.log('positions is array?', Array.isArray(snakeData.positions));
     this.snakeData = snakeData;
     this.render();
   }
@@ -146,6 +149,11 @@ export default class Snake {
    * 뱀을 화면에 렌더링
    */
   render(): void {
+    console.log('Snake.render called');
+    console.log('this.snakeData:', this.snakeData);
+    console.log('this.snakeData.positions:', this.snakeData.positions);
+    console.log('positions is array?', Array.isArray(this.snakeData.positions));
+    
     this.graphics.clear();
     
     // 뱀 몸통 그리기
@@ -182,16 +190,6 @@ export default class Snake {
     });
   }
 
-  /**
-   * 서버로부터 받은 상태로 업데이트
-   * @param newPositions - 새로운 위치 배열
-   * @param direction - 새로운 방향
-   */
-  updateFromServer(newPositions: Position[], direction: Direction): void {
-    this.snakeData.positions = newPositions;
-    this.snakeData.direction = direction;
-    this.render();
-  }
 
   /**
    * 리소스 정리
