@@ -167,11 +167,11 @@ class SocketController {
     const gameState = this.gameService.createGame(roomId, playerIds[0], playerIds[1]);
     
     // 초기 게임 상태 전송
-    this.io.to(roomId).emit('game-state', gameState);
+    this.io.to(roomId).emit('game-state', this.gameService.serializeGameState(gameState));
     
     // 게임 루프 시작
     this.gameService.startGameLoop(roomId, (state: any) => {
-      this.io.to(roomId).emit('game-state', state);
+      this.io.to(roomId).emit('game-state', this.gameService.serializeGameState(state));
       
       // 게임 종료 시
       if (state.isGameOver) {

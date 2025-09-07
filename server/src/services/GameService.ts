@@ -20,13 +20,13 @@ class GameService {
       gameTime: 0,
       isGameOver: false,
       winner: null,
-    };
+    } as any;
     
     // 플레이어 1 뱀 생성 (왼쪽)
     const snake1: Snake = {
       id: player1Id,
       positions: this.generateInitialPositions(
-        Math.floor(GAME_CONFIG.GRID_SIZE.WIDTH / 3),
+        10,  // 왼쪽에서 10칸
         Math.floor(GAME_CONFIG.GRID_SIZE.HEIGHT / 2)
       ),
       direction: 'right',
@@ -38,7 +38,7 @@ class GameService {
     const snake2: Snake = {
       id: player2Id,
       positions: this.generateInitialPositions(
-        Math.floor(2 * GAME_CONFIG.GRID_SIZE.WIDTH / 3),
+        GAME_CONFIG.GRID_SIZE.WIDTH - 10,  // 오른쪽에서 10칸
         Math.floor(GAME_CONFIG.GRID_SIZE.HEIGHT / 2)
       ),
       direction: 'left',
@@ -69,8 +69,15 @@ class GameService {
   
   private generateInitialPositions(startX: number, startY: number): Position[] {
     const positions: Position[] = [];
+    // 플레이어 1은 오른쪽으로, 플레이어 2는 왼쪽으로 향하도록
+    const isPlayer1 = startX < GAME_CONFIG.GRID_SIZE.WIDTH / 2;
+    
     for (let i = 0; i < GAME_CONFIG.INITIAL_SNAKE_LENGTH; i++) {
-      positions.push({ x: startX - i, y: startY });
+      if (isPlayer1) {
+        positions.push({ x: startX - i, y: startY });
+      } else {
+        positions.push({ x: startX + i, y: startY });
+      }
     }
     return positions;
   }
@@ -272,6 +279,18 @@ class GameService {
   
   getGameState(roomId: string): GameState | null {
     return this.games.get(roomId)?.gameState || null;
+  }
+  
+  // Socket.io 전송을 위해 Map을 일반 객체로 변환
+  serializeGameState(gameState: GameState): any {
+    return {
+      players: Object.fromEntries(gameState.players),
+      foods: Object.fromEntries(gameState.foods),
+      scores: Object.fromEntries(gameState.scores),
+      gameTime: gameState.gameTime,
+      isGameOver: gameState.isGameOver,
+      winner: gameState.winner,
+    };
   }
 }
 

@@ -90,21 +90,21 @@ export default class MultiplayerGameScene extends Phaser.Scene {
     });
   }
 
-  private updateGameState(gameState: GameState): void {
+  private updateGameState(gameState: any): void {
     // 뱀 업데이트
-    const playerIds = new Set(gameState.players.keys());
+    const playerIds = new Set(Object.keys(gameState.players));
     
     // 새로운 뱀 추가 또는 업데이트
-    for (const [playerId, snakeData] of gameState.players) {
+    for (const [playerId, snakeData] of Object.entries(gameState.players)) {
       let snake = this.snakes.get(playerId);
       
       if (!snake) {
         // 새로운 뱀 생성
-        snake = new Snake(this, snakeData, playerId === this.localPlayerId);
+        snake = new Snake(this, snakeData as SnakeType, playerId === this.localPlayerId);
         this.snakes.set(playerId, snake);
       } else {
         // 기존 뱀 업데이트
-        snake.updateFromServer(snakeData);
+        snake.updateFromServer(snakeData as SnakeType);
       }
     }
     
@@ -117,15 +117,15 @@ export default class MultiplayerGameScene extends Phaser.Scene {
     }
     
     // 먹이 업데이트
-    const foodIds = new Set(gameState.foods.keys());
+    const foodIds = new Set(Object.keys(gameState.foods));
     
     // 새로운 먹이 추가 또는 업데이트
-    for (const [foodId, foodData] of gameState.foods) {
+    for (const [foodId, foodData] of Object.entries(gameState.foods)) {
       let food = this.foods.get(foodId);
       
       if (!food) {
         // 새로운 먹이 생성
-        food = new Food(this, foodData);
+        food = new Food(this, foodData as FoodType);
         this.foods.set(foodId, food);
       }
     }
@@ -140,7 +140,7 @@ export default class MultiplayerGameScene extends Phaser.Scene {
     
     // 점수 업데이트
     const store = useGameStore.getState();
-    const myScore = gameState.scores.get(this.localPlayerId) || 0;
+    const myScore = gameState.scores[this.localPlayerId] || 0;
     // TODO: 점수 스토어 업데이트
   }
 
