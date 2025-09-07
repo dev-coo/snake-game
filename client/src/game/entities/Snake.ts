@@ -38,6 +38,14 @@ export default class Snake {
   }
 
   /**
+   * 서버로부터 받은 데이터로 뱀 상태 업데이트
+   */
+  updateFromServer(snakeData: SnakeType): void {
+    this.snakeData = snakeData;
+    this.render();
+  }
+
+  /**
    * 현재 방향으로 한 칸 이동
    */
   move(): void {

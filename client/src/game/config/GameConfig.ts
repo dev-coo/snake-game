@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import PreloadScene from '../scenes/PreloadScene';
 import GameScene from '../scenes/GameScene';
+import MultiplayerGameScene from '../scenes/MultiplayerGameScene';
 import { GAME_CONFIG } from '@snake-game/shared';
 
 /**
@@ -12,7 +13,7 @@ export const phaserConfig: Phaser.Types.Core.GameConfig = {
   width: GAME_CONFIG.GRID_SIZE.WIDTH * GAME_CONFIG.CELL_SIZE,
   height: GAME_CONFIG.GRID_SIZE.HEIGHT * GAME_CONFIG.CELL_SIZE,
   backgroundColor: '#0a0a0a',
-  scene: [PreloadScene, GameScene],
+  scene: [PreloadScene, GameScene, MultiplayerGameScene],
   physics: {
     default: 'arcade',
     arcade: {

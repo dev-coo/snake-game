@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { useGameStore } from '@/store/gameStore';
 
 /**
  * 게임 에셋을 미리 로드하는 씬
@@ -48,7 +49,14 @@ export default class PreloadScene extends Phaser.Scene {
   }
 
   create() {
-    this.scene.start('GameScene');
+    const store = useGameStore.getState();
+    const isMultiplayer = store.roomId !== null;
+    
+    if (isMultiplayer) {
+      this.scene.start('MultiplayerGameScene');
+    } else {
+      this.scene.start('GameScene');
+    }
   }
 
   /**
