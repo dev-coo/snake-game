@@ -40,8 +40,13 @@ export default function GameContainer() {
 
   const handleRestart = () => {
     if (gameRef.current) {
-      // 현재 씬 재시작
-      const scene = gameRef.current.scene.getScene('GameScene');
+      const store = useGameStore.getState();
+      const isMultiplayer = store.roomId !== null;
+      
+      // 멀티플레이어와 싱글플레이어 구분
+      const sceneName = isMultiplayer ? 'MultiplayerGameScene' : 'GameScene';
+      const scene = gameRef.current.scene.getScene(sceneName);
+      
       if (scene) {
         scene.scene.restart();
       }

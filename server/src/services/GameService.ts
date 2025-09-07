@@ -287,16 +287,26 @@ class GameService {
     for (const [id, snake] of gameState.players) {
       players[id] = {
         id: snake.id,
-        positions: [...snake.positions], // 배열 복사
+        positions: snake.positions.map(pos => ({ x: pos.x, y: pos.y })), // 깊은 복사
         direction: snake.direction,
         speed: snake.speed,
         color: snake.color,
       };
     }
     
+    const foods: any = {};
+    for (const [id, food] of gameState.foods) {
+      foods[id] = {
+        id: food.id,
+        position: { x: food.position.x, y: food.position.y },
+        type: food.type,
+        value: food.value,
+      };
+    }
+    
     return {
       players,
-      foods: Object.fromEntries(gameState.foods),
+      foods,
       scores: Object.fromEntries(gameState.scores),
       gameTime: gameState.gameTime,
       isGameOver: gameState.isGameOver,
