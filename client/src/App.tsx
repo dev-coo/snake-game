@@ -1,18 +1,34 @@
-import { useState } from 'react';
 import GameContainer from './components/GameContainer';
 import MainMenu from './components/MainMenu';
+import MultiplayerMenu from './components/MultiplayerMenu';
+import WaitingRoom from './components/WaitingRoom';
 import { useGameStore } from './store/gameStore';
 
 function App() {
-  const gameStatus = useGameStore((state) => state.gameStatus);
+  const { gameStatus, resetGame } = useGameStore();
+  
+  const renderContent = () => {
+    switch (gameStatus) {
+      case 'menu':
+        return <MainMenu />;
+      
+      case 'multiplayer-menu':
+        return <MultiplayerMenu onBack={resetGame} />;
+      
+      case 'waiting-room':
+        return <WaitingRoom onLeave={resetGame} />;
+      
+      case 'playing':
+        return <GameContainer />;
+      
+      default:
+        return <MainMenu />;
+    }
+  };
   
   return (
     <div className="min-h-screen bg-game-bg">
-      {gameStatus === 'menu' ? (
-        <MainMenu />
-      ) : (
-        <GameContainer />
-      )}
+      {renderContent()}
     </div>
   );
 }

@@ -41,8 +41,7 @@ export default function MainMenu() {
     localStorage.setItem('playerName', playerName);
     setStorePlayerName(playerName);
     setGameMode('battle');
-    // TODO: 멀티플레이어 구현 시 로비로 이동
-    alert('멀티플레이어는 준비중입니다!');
+    setGameStatus('multiplayer-menu');
   };
 
   return (

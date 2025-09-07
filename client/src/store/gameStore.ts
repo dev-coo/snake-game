@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { GameMode, GameState } from '@snake-game/shared';
 
 interface GameStore {
-  gameStatus: 'menu' | 'loading' | 'playing' | 'finished';
+  gameStatus: 'menu' | 'loading' | 'playing' | 'finished' | 'multiplayer-menu' | 'waiting-room';
   gameMode: GameMode;
   playerName: string;
   roomId: string | null;
