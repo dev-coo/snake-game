@@ -53,3 +53,13 @@ export interface GameState {
     height: number;
   };
 }
+
+// 멀티플레이어 게임용 GameState
+export interface MultiplayerGameState {
+  players: Map<string, Snake>;
+  foods: Map<string, Food>;
+  scores: Map<string, number>;
+  gameTime: number;
+  isGameOver: boolean;
+  winner: string | null;
+}

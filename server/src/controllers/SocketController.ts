@@ -1,13 +1,17 @@
 import type { Server, Socket } from 'socket.io';
-import type { GameMode } from '@snake-game/shared';
+import type { GameMode, Direction } from '@snake-game/shared';
 
 const { RoomService } = require('../services/RoomService');
+const { GameService } = require('../services/GameService');
 
 class SocketController {
+  private gameService: any;
+  
   constructor(
     private io: Server,
     private roomService: any
   ) {
+    this.gameService = new GameService();
     this.setupEventHandlers();
   }
   
@@ -100,7 +104,8 @@ class SocketController {
             this.io.to(data.roomId).emit('game-starting');
             console.log(`Game starting in room ${data.roomId}`);
             
-            // TODO: 게임 로직 초기화
+            // 게임 초기화
+            this.startGame(data.roomId);
           }
         }
       });
@@ -108,6 +113,11 @@ class SocketController {
       // 방 나가기
       socket.on('leave-room', (data: { roomId: string }) => {
         this.handleLeaveRoom(socket, data.roomId);
+      });
+      
+      // 게임 입력 처리
+      socket.on('game-input', (data: { roomId: string; direction: Direction }) => {
+        this.gameService.updateDirection(data.roomId, socket.id, data.direction);
       });
       
       // 연결 해제
@@ -147,6 +157,39 @@ class SocketController {
         playerId: socket.id,
       });
     }
+  }
+  
+  private startGame(roomId: string): void {
+    const room = this.roomService.getRoom(roomId);
+    if (!room || room.players.size !== 2) return;
+    
+    const playerIds = Array.from(room.players.keys());
+    const gameState = this.gameService.createGame(roomId, playerIds[0], playerIds[1]);
+    
+    // 초기 게임 상태 전송
+    this.io.to(roomId).emit('game-state', gameState);
+    
+    // 게임 루프 시작
+    this.gameService.startGameLoop(roomId, (state: any) => {
+      this.io.to(roomId).emit('game-state', state);
+      
+      // 게임 종료 시
+      if (state.isGameOver) {
+        room.status = 'finished';
+        const winner = state.winner ? room.players.get(state.winner)?.name : '무승부';
+        
+        this.io.to(roomId).emit('game-over', {
+          winner: state.winner,
+          winnerName: winner,
+          scores: Object.fromEntries(state.scores),
+        });
+        
+        // 게임 정리
+        setTimeout(() => {
+          this.gameService.stopGame(roomId);
+        }, 5000);
+      }
+    });
   }
 }
 
