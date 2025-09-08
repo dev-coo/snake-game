@@ -31,22 +31,58 @@ class NetworkService {
   private roomUpdateCallback: ((data: any) => void) | null = null;
   
   constructor() {
-    this.serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+    this.serverUrl = this.getServerUrl();
+  }
+  
+  private getServerUrl(): string {
+    // 환경 변수 확인
+    if (import.meta.env.VITE_SERVER_URL) {
+      console.log('Using VITE_SERVER_URL:', import.meta.env.VITE_SERVER_URL);
+      return import.meta.env.VITE_SERVER_URL;
+    }
+    
+    // 현재 페이지 정보
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    const port = window.location.port || (protocol === 'https:' ? '443' : '80');
+    
+    console.log('Current location:', { protocol, hostname, port });
+    
+    // Vite 프록시를 통해 연결 (3001 포트포워딩 불필요)
+    // 모든 경우에 현재 페이지와 같은 호스트/포트 사용
+    const url = port === '80' || port === '443' 
+      ? `${protocol}//${hostname}`
+      : `${protocol}//${hostname}:${port}`;
+    
+    console.log('Using proxy through:', url);
+    return url;
   }
   
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (this.socket?.connected) {
-        resolve();
-        return;
+      // 이미 연결되어 있으면 새로 연결
+      if (this.socket) {
+        this.socket.disconnect();
+        this.socket = null;
       }
       
+      // 서버 URL 재확인
+      this.serverUrl = this.getServerUrl();
+      console.log('=== Socket.io Connection Debug ===');
+      console.log('Server URL:', this.serverUrl);
+      console.log('Window location:', window.location.href);
+      
       this.socket = io(this.serverUrl, {
-        transports: ['websocket'],
+        transports: ['websocket', 'polling'],  // polling도 추가하여 폴백 지원
         reconnection: true,
-        reconnectionAttempts: 5,
+        reconnectionAttempts: 10,
         reconnectionDelay: 1000,
+        timeout: 20000,  // 연결 타임아웃 증가
+        forceNew: true,  // 새 연결 강제
+        path: '/socket.io/',  // 명시적 경로 설정
       });
+      
+      console.log('Socket.io instance created');
       
       this.socket.on('connect', () => {
         console.log('Connected to server');
@@ -55,7 +91,17 @@ class NetworkService {
       
       this.socket.on('connect_error', (error) => {
         console.error('Connection error:', error);
-        reject(error);
+        console.error('Error type:', error.type);
+        console.error('Error message:', error.message);
+        reject(new Error(`서버 연결 실패: ${error.message}`));
+      });
+      
+      this.socket.on('reconnect_attempt', (attemptNumber) => {
+        console.log(`Reconnection attempt ${attemptNumber}`);
+      });
+      
+      this.socket.on('reconnect_failed', () => {
+        console.error('Failed to reconnect after all attempts');
       });
       
       this.setupEventHandlers();

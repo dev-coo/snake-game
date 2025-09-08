@@ -37,11 +37,12 @@ export default function MultiplayerMenu({ onBack }: MultiplayerMenuProps) {
     setError('');
     
     try {
+      console.log('Creating room...');
       await networkService.connect();
       networkService.createRoom(playerName, gameMode);
     } catch (err) {
       console.error('Failed to create room:', err);
-      setError('방 생성에 실패했습니다');
+      setError(`서버 연결 실패: ${err instanceof Error ? err.message : '알 수 없는 오류'}`);
       setIsCreating(false);
     }
   };
@@ -61,11 +62,12 @@ export default function MultiplayerMenu({ onBack }: MultiplayerMenuProps) {
     setError('');
     
     try {
+      console.log('Joining room...');
       await networkService.connect();
       networkService.joinRoom(roomCode.toUpperCase(), playerName);
     } catch (err) {
       console.error('Failed to join room:', err);
-      setError('방 참가에 실패했습니다');
+      setError(`서버 연결 실패: ${err instanceof Error ? err.message : '알 수 없는 오류'}`);
       setIsJoining(false);
     }
   };

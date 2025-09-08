@@ -12,15 +12,18 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    host: '0.0.0.0',  // 모든 네트워크 인터페이스에서 접속 허용
     proxy: {
       '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,
+        secure: false,
       },
       '/socket.io': {
         target: 'http://localhost:3001',
         changeOrigin: true,
         ws: true,
+        secure: false,
       },
     },
   },

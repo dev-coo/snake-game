@@ -104,8 +104,10 @@ class SocketController {
             this.io.to(data.roomId).emit('game-starting');
             console.log(`Game starting in room ${data.roomId}`);
             
-            // 게임 초기화
-            this.startGame(data.roomId);
+            // 클라이언트가 준비할 시간을 준 후 게임 시작
+            setTimeout(() => {
+              this.startGame(data.roomId);
+            }, 1000);
           }
         }
       });
@@ -130,6 +132,10 @@ class SocketController {
           room.rematchRequests = new Set();
         }
         room.rematchRequests.add(socket.id);
+        
+        console.log('[REMATCH] Request from:', socket.id);
+        console.log('[REMATCH] Current requests:', Array.from(room.rematchRequests));
+        console.log('[REMATCH] Room players size:', room.players.size);
         
         // 상대방에게 재경기 요청 알림
         socket.broadcast.to(data.roomId).emit('rematch-requested', {
@@ -157,35 +163,62 @@ class SocketController {
       
       // 연결 해제
       socket.on('disconnect', () => {
+        console.log(`[DISCONNECT] Client disconnecting: ${socket.id}`);
+        
         // 플레이어가 속한 모든 방에서 제거
         const rooms = Array.from(socket.rooms);
+        console.log(`[DISCONNECT] Player was in rooms:`, rooms);
+        
         rooms.forEach((roomId: string) => {
           if (roomId !== socket.id) {
+            console.log(`[DISCONNECT] Removing from room: ${roomId}`);
             this.handleLeaveRoom(socket, roomId);
           }
         });
         
-        console.log(`Client disconnected: ${socket.id}`);
+        console.log(`[DISCONNECT] Client disconnected: ${socket.id}`);
       });
     });
   }
   
   private handleLeaveRoom(socket: Socket, roomId: string) {
+    console.log('[LEAVE] Player leaving:', socket.id, 'from room:', roomId);
+    
+    const room = this.roomService.getRoom(roomId);
+    console.log('[LEAVE] Room status before leave:', room?.status);
+    console.log('[LEAVE] Rematch requests before leave:', room?.rematchRequests ? Array.from(room.rematchRequests) : 'none');
+    console.log('[LEAVE] Room players before leave:', room ? Array.from(room.players.keys()) : 'no room');
+    
+    // 게임 중이거나 재경기 요청이 있었다면 정리
+    if (room) {
+      if (room.status === 'playing' || room.status === 'finished') {
+        console.log('[LEAVE] Cleaning up game state for room:', roomId);
+        this.gameService.stopGame(roomId);
+        room.status = 'waiting';
+      }
+      
+      // 재경기 요청 초기화
+      if (room.rematchRequests) {
+        console.log('[LEAVE] Clearing rematch requests');
+        room.rematchRequests = undefined;
+      }
+    }
+    
     socket.leave(roomId);
     this.roomService.leaveRoom(roomId, socket.id);
     
-    const room = this.roomService.getRoom(roomId);
-    if (room) {
-      const playerList = Array.from(room.players.values()).map((p: any) => ({
+    const roomAfter = this.roomService.getRoom(roomId);
+    if (roomAfter) {
+      const playerList = Array.from(roomAfter.players.values()).map((p: any) => ({
         id: p.id,
         name: p.name,
         ready: p.ready,
-        isHost: p.id === room.host,
+        isHost: p.id === roomAfter.host,
       }));
       
       this.io.to(roomId).emit('room-updated', {
         players: playerList,
-        status: room.status,
+        status: roomAfter.status,
       });
       
       socket.broadcast.to(roomId).emit('player-left', {
@@ -198,13 +231,45 @@ class SocketController {
     const room = this.roomService.getRoom(roomId);
     if (!room || room.players.size !== 2) return;
     
+    // 플레이어 ID를 일관된 순서로 정렬 (호스트가 항상 player1)
     const playerIds = Array.from(room.players.keys());
-    const gameState = this.gameService.createGame(roomId, playerIds[0], playerIds[1]);
+    const sortedPlayerIds = playerIds.sort((a, b) => {
+      // 호스트가 항상 첫 번째(왼쪽 위치)
+      if (a === room.host) return -1;
+      if (b === room.host) return 1;
+      // 호스트가 아닌 경우 ID로 정렬하여 일관성 유지
+      return a.localeCompare(b);
+    });
     
-    // 초기 게임 상태 전송
-    this.io.to(roomId).emit('game-state', this.gameService.serializeGameState(gameState));
+    console.log('[GAME] Starting game with sorted player IDs:', sortedPlayerIds);
     
-    // 게임 루프 시작
+    // 카운트다운 시작 알림
+    let countdown = 3;
+    this.io.to(roomId).emit('game-countdown', { count: countdown });
+    
+    const countdownInterval = setInterval(() => {
+      countdown--;
+      if (countdown > 0) {
+        this.io.to(roomId).emit('game-countdown', { count: countdown });
+      } else {
+        clearInterval(countdownInterval);
+        
+        // 게임 생성 및 시작
+        const gameState = this.gameService.createGame(roomId, sortedPlayerIds[0], sortedPlayerIds[1]);
+        
+        // 초기 게임 상태 전송
+        this.io.to(roomId).emit('game-state', this.gameService.serializeGameState(gameState));
+        
+        // 게임 루프 시작
+        this.startGameLoop(roomId);
+      }
+    }, 1000);
+  }
+  
+  private startGameLoop(roomId: string): void {
+    const room = this.roomService.getRoom(roomId);
+    if (!room) return;
+    
     this.gameService.startGameLoop(roomId, (state: any) => {
       this.io.to(roomId).emit('game-state', this.gameService.serializeGameState(state));
       
@@ -236,8 +301,23 @@ class SocketController {
   }
   
   private resetAndStartGame(roomId: string): void {
+    console.log('[REMATCH] resetAndStartGame called for room:', roomId);
+    
     const room = this.roomService.getRoom(roomId);
-    if (!room) return;
+    if (!room) {
+      console.log('[REMATCH] Room not found!');
+      return;
+    }
+    
+    // 플레이어가 2명인지 확인
+    if (room.players.size !== 2) {
+      console.log('[REMATCH] Not enough players:', room.players.size);
+      return;
+    }
+    
+    console.log('[REMATCH] Room players:', Array.from(room.players.keys()));
+    console.log('[REMATCH] Room host:', room.host);
+    console.log('[REMATCH] Room player count:', room.players.size);
     
     // 재경기 요청 초기화
     room.rematchRequests = new Set();
@@ -249,10 +329,10 @@ class SocketController {
     // 새 게임 시작
     this.io.to(roomId).emit('rematch-starting');
     
-    // 잠시 후 게임 시작 (클라이언트 준비 시간)
+    // 클라이언트가 씬을 재시작할 시간을 준 후 게임 시작
     setTimeout(() => {
       this.startGame(roomId);
-    }, 1000);
+    }, 2000);
   }
 }
 

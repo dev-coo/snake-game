@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket 연결 테스트</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #00ff00;
+    }
+    button {
+      background: #333;
+      color: #00ff00;
+      border: 1px solid #00ff00;
+      padding: 10px 20px;
+      margin: 10px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #444;
+    }
+    #log {
+      background: #000;
+      padding: 10px;
+      border: 1px solid #00ff00;
+      height: 400px;
+      overflow-y: scroll;
+      margin-top: 20px;
+    }
+    .error {
+      color: #ff0066;
+    }
+    .success {
+      color: #00ff00;
+    }
+    .info {
+      color: #ffcc00;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 Snake Battle - WebSocket 연결 테스트</h1>
+  
+  <div>
+    <p class="info">현재 페이지 URL: <span id="pageUrl"></span></p>
+    <p class="info">감지된 서버 URL: <span id="serverUrl"></span></p>
+  </div>
+  
+  <div>
+    <button onclick="testConnection()">연결 테스트</button>
+    <button onclick="testWithCustomUrl()">커스텀 URL 테스트</button>
+    <button onclick="testHealthCheck()">Health Check</button>
+    <button onclick="testDirectSocket()">Direct Socket.io</button>
+    <button onclick="clearLog()">로그 지우기</button>
+  </div>
+  
+  <div>
+    <input type="text" id="customUrl" placeholder="서버 URL (예: http://example.com:3001)" style="width: 300px; padding: 5px;">
+  </div>
+  
+  <div id="log"></div>
+  
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const logDiv = document.getElementById('log');
+    const pageUrlSpan = document.getElementById('pageUrl');
+    const serverUrlSpan = document.getElementById('serverUrl');
+    
+    // 현재 페이지 정보 표시
+    pageUrlSpan.textContent = window.location.href;
+    
+    // 서버 URL 자동 감지
+    function getServerUrl() {
+      const protocol = window.location.protocol;
+      const hostname = window.location.hostname;
+      
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://localhost:3001';
+      } else {
+        return `${protocol}//${hostname}:3001`;
+      }
+    }
+    
+    serverUrlSpan.textContent = getServerUrl();
+    
+    function log(message, type = 'info') {
+      const time = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = type;
+      entry.textContent = `[${time}] ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+    
+    function testConnection() {
+      const serverUrl = getServerUrl();
+      log(`테스트 시작: ${serverUrl}`, 'info');
+      
+      const socket = io(serverUrl, {
+        transports: ['websocket', 'polling'],
+        reconnection: false,
+        timeout: 10000,
+        forceNew: true,
+      });
+      
+      socket.on('connect', () => {
+        log('✅ 연결 성공!', 'success');
+        log(`Socket ID: ${socket.id}`, 'success');
+        
+        // 연결 성공 후 바로 끊기
+        setTimeout(() => {
+          socket.disconnect();
+          log('연결 종료', 'info');
+        }, 1000);
+      });
+      
+      socket.on('connect_error', (error) => {
+        log(`❌ 연결 실패: ${error.message}`, 'error');
+        log(`Error type: ${error.type}`, 'error');
+      });
+      
+      socket.on('error', (error) => {
+        log(`❌ 에러: ${error}`, 'error');
+      });
+    }
+    
+    function testWithCustomUrl() {
+      const customUrl = document.getElementById('customUrl').value;
+      if (!customUrl) {
+        log('URL을 입력해주세요', 'error');
+        return;
+      }
+      
+      log(`커스텀 URL 테스트: ${customUrl}`, 'info');
+      
+      const socket = io(customUrl, {
+        transports: ['websocket', 'polling'],
+        reconnection: false,
+        timeout: 10000,
+        forceNew: true,
+      });
+      
+      socket.on('connect', () => {
+        log('✅ 커스텀 URL 연결 성공!', 'success');
+        log(`Socket ID: ${socket.id}`, 'success');
+        
+        setTimeout(() => {
+          socket.disconnect();
+          log('연결 종료', 'info');
+        }, 1000);
+      });
+      
+      socket.on('connect_error', (error) => {
+        log(`❌ 커스텀 URL 연결 실패: ${error.message}`, 'error');
+      });
+    }
+    
+    function clearLog() {
+      logDiv.innerHTML = '';
+      log('로그 지움', 'info');
+    }
+    
+    function testHealthCheck() {
+      const serverUrl = getServerUrl();
+      const healthUrl = `${serverUrl}/health`;
+      log(`Health check: ${healthUrl}`, 'info');
+      
+      fetch(healthUrl)
+        .then(response => {
+          log(`HTTP Status: ${response.status}`, response.ok ? 'success' : 'error');
+          return response.json();
+        })
+        .then(data => {
+          log(`✅ Health check 성공: ${JSON.stringify(data)}`, 'success');
+        })
+        .catch(error => {
+          log(`❌ Health check 실패: ${error.message}`, 'error');
+        });
+    }
+    
+    function testDirectSocket() {
+      const serverUrl = getServerUrl();
+      log(`Direct Socket.io 테스트: ${serverUrl}`, 'info');
+      
+      // Socket.io 없이 직접 WebSocket 테스트
+      try {
+        const wsUrl = serverUrl.replace('http:', 'ws:').replace('https:', 'wss:');
+        const ws = new WebSocket(`${wsUrl}/socket.io/?EIO=4&transport=websocket`);
+        
+        ws.onopen = () => {
+          log('✅ WebSocket 직접 연결 성공!', 'success');
+          ws.close();
+        };
+        
+        ws.onerror = (error) => {
+          log(`❌ WebSocket 직접 연결 실패`, 'error');
+        };
+        
+        ws.onclose = () => {
+          log('WebSocket 연결 종료', 'info');
+        };
+      } catch (error) {
+        log(`❌ WebSocket 생성 실패: ${error.message}`, 'error');
+      }
+    }
+    
+    // 페이지 로드 시 자동 테스트
+    window.onload = () => {
+      log('페이지 로드 완료', 'info');
+      log(`브라우저: ${navigator.userAgent}`, 'info');
+    };
+  </script>
+</body>
+</html>

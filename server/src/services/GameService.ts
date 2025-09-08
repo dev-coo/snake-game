@@ -12,6 +12,10 @@ class GameService {
   private games: Map<string, GameRoom> = new Map();
   
   createGame(roomId: string, player1Id: string, player2Id: string): GameState {
+    console.log('[GAME] Creating game for room:', roomId);
+    console.log('[GAME] Player1:', player1Id);
+    console.log('[GAME] Player2:', player2Id);
+    
     // 초기 게임 상태 생성
     const initialState: GameState = {
       players: new Map(),
@@ -34,6 +38,8 @@ class GameService {
       color: COLORS.PLAYER1,
     };
     
+    console.log('[GAME] Snake1 color:', snake1.color, 'positions:', snake1.positions.length);
+    
     // 플레이어 2 뱀 생성 (오른쪽)
     const snake2: Snake = {
       id: player2Id,
@@ -46,8 +52,12 @@ class GameService {
       color: COLORS.PLAYER2,
     };
     
+    console.log('[GAME] Snake2 color:', snake2.color, 'positions:', snake2.positions.length);
+    
     initialState.players.set(player1Id, snake1);
     initialState.players.set(player2Id, snake2);
+    
+    console.log('[GAME] Game state created with', initialState.players.size, 'players');
     
     // 초기 먹이 생성
     for (let i = 0; i < 5; i++) {

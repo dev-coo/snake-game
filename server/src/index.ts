@@ -15,8 +15,9 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    origin: process.env.CLIENT_URL || '*',  // 모든 origin 허용
     methods: ['GET', 'POST'],
+    credentials: true,
   },
 });
 
@@ -27,9 +28,11 @@ const roomService = new RoomService();
 const socketController = new SocketController(io, roomService);
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false,  // WebSocket 연결을 위해 비활성화
+}));
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: true,  // 모든 origin 허용
   credentials: true,
 }));
 app.use(express.json());
@@ -53,10 +56,26 @@ app.get('/api/rooms', (req: Request, res: Response) => {
 
 // Start server
 const PORT = process.env.PORT || 3001;
+const HOST = process.env.HOST || '0.0.0.0';  // 모든 네트워크 인터페이스에서 리스닝
 
-httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Health check available at http://localhost:${PORT}/health`);
+httpServer.listen(PORT, HOST, () => {
+  console.log(`Server running on ${HOST}:${PORT}`);
+  console.log(`Health check available at http://${HOST}:${PORT}/health`);
+  
+  // 로컬 네트워크 IP 주소 출력
+  const os = require('os');
+  const networkInterfaces = os.networkInterfaces();
+  console.log('\nServer is accessible at:');
+  console.log(`  - http://localhost:${PORT}`);
+  
+  Object.keys(networkInterfaces).forEach((interfaceName) => {
+    const interfaces = networkInterfaces[interfaceName];
+    interfaces.forEach((iface: any) => {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        console.log(`  - http://${iface.address}:${PORT}`);
+      }
+    });
+  });
 }).on('error', (err: any) => {
   console.error('Server start error:', err);
   process.exit(1);

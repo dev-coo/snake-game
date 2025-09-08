@@ -16,12 +16,22 @@ export default class MultiplayerGameScene extends Phaser.Scene {
   private networkService = NetworkService.getInstance();
   private lastInputTime: number = 0;
   private inputDelay: number = 50; // 입력 딜레이 (밀리초)
+  private countdownText: Phaser.GameObjects.Text | null = null;
 
   constructor() {
     super({ key: 'MultiplayerGameScene' });
   }
 
   create() {
+    console.log('[SCENE] MultiplayerGameScene create called');
+    console.log('[SCENE] Existing snakes before clear:', this.snakes.size);
+    console.log('[SCENE] Existing foods before clear:', this.foods.size);
+    
+    // 기존 엔티티 정리
+    this.snakes.clear();
+    this.foods.clear();
+    this.lastDirection = 'right';
+    
     this.setupGrid();
     this.setupInput();
     this.setupNetworkListeners();
@@ -30,6 +40,7 @@ export default class MultiplayerGameScene extends Phaser.Scene {
     const socket = (this.networkService as any).socket;
     if (socket) {
       this.localPlayerId = socket.id;
+      console.log('[SCENE] Local player ID:', this.localPlayerId);
     }
   }
 
@@ -81,6 +92,11 @@ export default class MultiplayerGameScene extends Phaser.Scene {
       this.updateGameState(gameState);
     });
 
+    // 카운트다운 이벤트 처리
+    socket.on('game-countdown', (data: { count: number }) => {
+      this.showCountdown(data.count);
+    });
+    
     // 게임 오버
     socket.on('game-over', (data: any) => {
       console.log('Game over:', data);
@@ -122,19 +138,18 @@ export default class MultiplayerGameScene extends Phaser.Scene {
   }
 
   private updateGameState(gameState: any): void {
-    console.log('=== updateGameState called ===');
-    console.log('gameState:', gameState);
-    console.log('gameState.players:', gameState.players);
+    console.log('[SCENE] === updateGameState called ===');
+    console.log('[SCENE] Players in state:', Object.keys(gameState.players));
+    console.log('[SCENE] Local player ID:', this.localPlayerId);
     
     // 뱀 업데이트
     const playerIds = new Set(Object.keys(gameState.players));
     
     // 새로운 뱀 추가 또는 업데이트
     for (const [playerId, snakeData] of Object.entries(gameState.players)) {
-      console.log(`Processing player ${playerId}:`, snakeData);
-      console.log('snakeData type:', typeof snakeData);
-      console.log('snakeData.positions:', snakeData.positions);
-      console.log('Is positions array?', Array.isArray(snakeData.positions));
+      console.log(`[SCENE] Processing player ${playerId}`);
+      console.log('[SCENE] Snake color:', (snakeData as any).color);
+      console.log('[SCENE] Is local player?', playerId === this.localPlayerId);
       
       // positions를 배열로 변환
       const processedSnakeData = {
@@ -144,18 +159,17 @@ export default class MultiplayerGameScene extends Phaser.Scene {
           : Object.values(snakeData.positions || {})
       } as SnakeType;
       
-      console.log('processedSnakeData:', processedSnakeData);
-      
       let snake = this.snakes.get(playerId);
       
       if (!snake) {
         // 새로운 뱀 생성
-        console.log('Creating new snake with data:', processedSnakeData);
+        console.log('[SCENE] Creating new snake for player:', playerId);
+        console.log('[SCENE] Snake positions count:', processedSnakeData.positions.length);
         snake = new Snake(this, processedSnakeData, playerId === this.localPlayerId);
         this.snakes.set(playerId, snake);
+        console.log('[SCENE] Snake created successfully');
       } else {
         // 기존 뱀 업데이트
-        console.log('Updating existing snake with data:', processedSnakeData);
         snake.updateFromServer(processedSnakeData);
       }
     }
@@ -246,6 +260,64 @@ export default class MultiplayerGameScene extends Phaser.Scene {
     }
   }
 
+  private showCountdown(count: number): void {
+    // 기존 카운트다운 텍스트 제거
+    if (this.countdownText) {
+      this.countdownText.destroy();
+      this.countdownText = null;
+    }
+    
+    if (count > 0) {
+      // 카운트다운 텍스트 생성
+      this.countdownText = this.add.text(
+        GAME_CONFIG.GRID_SIZE.WIDTH * GAME_CONFIG.CELL_SIZE / 2,
+        GAME_CONFIG.GRID_SIZE.HEIGHT * GAME_CONFIG.CELL_SIZE / 2,
+        count.toString(),
+        {
+          fontSize: '72px',
+          color: '#ffffff',
+          fontStyle: 'bold',
+        }
+      );
+      this.countdownText.setOrigin(0.5);
+      this.countdownText.setDepth(1000);
+      
+      // 페이드 아웃 효과
+      this.tweens.add({
+        targets: this.countdownText,
+        alpha: 0,
+        scale: 1.5,
+        duration: 900,
+        ease: 'Power2',
+      });
+    } else {
+      // 게임 시작!
+      const startText = this.add.text(
+        GAME_CONFIG.GRID_SIZE.WIDTH * GAME_CONFIG.CELL_SIZE / 2,
+        GAME_CONFIG.GRID_SIZE.HEIGHT * GAME_CONFIG.CELL_SIZE / 2,
+        'GO!',
+        {
+          fontSize: '72px',
+          color: '#00ff00',
+          fontStyle: 'bold',
+        }
+      );
+      startText.setOrigin(0.5);
+      startText.setDepth(1000);
+      
+      this.tweens.add({
+        targets: startText,
+        alpha: 0,
+        scale: 1.5,
+        duration: 500,
+        ease: 'Power2',
+        onComplete: () => {
+          startText.destroy();
+        },
+      });
+    }
+  }
+  
   shutdown(): void {
     // 엔티티 정리
     for (const snake of this.snakes.values()) {
@@ -263,11 +335,17 @@ export default class MultiplayerGameScene extends Phaser.Scene {
       this.gridGraphics.destroy();
     }
     
+    if (this.countdownText) {
+      this.countdownText.destroy();
+      this.countdownText = null;
+    }
+    
     // 네트워크 리스너 정리
     const socket = (this.networkService as any).socket;
     if (socket) {
       socket.off('game-state');
       socket.off('game-over');
+      socket.off('game-countdown');
     }
   }
 }

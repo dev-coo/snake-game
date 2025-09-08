@@ -6,7 +6,8 @@
       "Bash(curl:*)",
       "Bash(npm install:*)",
       "Bash(git restore:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }
